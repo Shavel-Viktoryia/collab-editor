@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Editor</title>
+    <link rel="stylesheet" href="/static/css/editor.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Collaborative Editor</h1>
+        </header>
+        
+        <div class="home-content">
+            <div class="create-session">
+                <h2>Start a new session</h2>
+                <form id="create-form">
+                    <input type="text" id="username" placeholder="Your name" required>
+                    <button type="submit">Create Session</button>
+                </form>
+            </div>
+            
+            <div class="join-session">
+                <h2>Join existing session</h2>
+                <form id="join-form">
+                    <input type="text" id="join-username" placeholder="Your name">
+                    <input type="text" id="session-id" placeholder="Session ID" required>
+                    <button type="submit">Join Session</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('create-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value || 'Anonymous';
+            // Generate a random session ID
+            const sessionId = Math.random().toString(36).substring(2, 10);
+            window.location.href = `/${sessionId}?username=${encodeURIComponent(username)}`;
+        });
+        
+        document.getElementById('join-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('join-username').value || 'Anonymous';
+            const sessionId = document.getElementById('session-id').value.trim();
+            window.location.href = `/${sessionId}?username=${encodeURIComponent(username)}`;
+        });
+    </script>
+</body>
+</html>
