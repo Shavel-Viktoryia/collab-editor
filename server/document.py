@@ -60,27 +60,32 @@ class Document:
         return result_ops
     
     def _transform_operations(self, incoming_ops: List[TextOperation], missed_ops: List[TextOperation]) -> List[TextOperation]:
-        # Simple Operational Transform implementation
         transformed_ops = incoming_ops.copy()
         
         for missed_op in missed_ops:
             for i, op in enumerate(transformed_ops):
-                # If operations affect the same position
-                if op.position == missed_op.position:
-                    if op.type == 'insert' and missed_op.type == 'insert':
-                        # Both inserts - order by client ID for consistency
-                        if op.id > missed_op.id:
-                            op.position += len(missed_op.text)
-                    elif op.position > missed_op.position:
-                        if missed_op.type == 'insert':
-                            op.position += len(missed_op.text)
-                        elif missed_op.type == 'delete':
-                            op.position -= missed_op.length
+                # If the incoming op is before the missed op, no transformation needed
+                if op.position < missed_op.position:
+                    continue
+                    
+                # If the incoming op is after the missed op
                 elif op.position > missed_op.position:
                     if missed_op.type == 'insert':
                         op.position += len(missed_op.text)
                     elif missed_op.type == 'delete':
-                        op.position -= missed_op.length
+                        op.position = max(missed_op.position, 
+                                        op.position - missed_op.length)
+                
+                # If ops are at the same position
+                else:
+                    if op.type == 'insert' and missed_op.type == 'insert':
+                        # Order by client ID for consistency
+                        if op.id > missed_op.id:
+                            op.position += len(missed_op.text)
+                    elif op.type == 'delete' and missed_op.type == 'insert':
+                        op.position += len(missed_op.text)
+                    elif op.type == 'insert' and missed_op.type == 'delete':
+                        op.position = max(missed_op.position, op.position)
         
         return transformed_ops
     

@@ -14,10 +14,13 @@ class CollaborativeEditor {
         this.pendingOperations = [];
         this.ignoreNextChange = false;
         this.username = `User${Math.floor(Math.random() * 1000)}`;
+        this.cursorPosition = 0;
+        this.lastKnownText = '';
         
         this.initializeSocket();
         this.initializeEditor();
         this.initializeUI();
+        this.setupCursorTracking();
     }
     
     initializeSocket() {
@@ -28,15 +31,26 @@ class CollaborativeEditor {
             });
         });
         
+        this.socket.on('connect_error', (error) => {
+            console.error('Connection Error:', error);
+        });
+
+        this.socket.on('disconnect', (reason) => {
+            console.log('Disconnected:', reason);
+        });
+        
         this.socket.on('init', (data) => {
             this.revision = data.revision;
             this.editor.value = data.text;
+            this.lastKnownText = data.text;
             this.updateUserList(data.clients);
         });
         
         this.socket.on('update', (data) => {
-            this.revision = data.revision;
-            this.applyRemoteOperations(data.operations);
+            if (data.clientId !== this.socket.id) {
+                this.revision = data.revision;
+                this.applyRemoteOperations(data.operations);
+            }
         });
         
         this.socket.on('history', (history) => {
@@ -56,7 +70,6 @@ class CollaborativeEditor {
             
             this.pendingOperations.push(...operations);
             
-            // Send operations to server
             this.socket.emit('edit', {
                 sessionId: this.sessionId,
                 revision: this.revision,
@@ -69,73 +82,103 @@ class CollaborativeEditor {
             });
             
             this.revision += operations.length;
+            this.lastKnownText = this.editor.value;
+        });
+    }
+    
+    setupCursorTracking() {
+        this.editor.addEventListener('click', () => {
+            this.cursorPosition = this.editor.selectionStart;
+        });
+        
+        this.editor.addEventListener('keyup', () => {
+            this.cursorPosition = this.editor.selectionStart;
         });
     }
     
     calculateOperations(e) {
-    const operations = [];
-    const newText = this.editor.value;
-    const oldText = e.target._prevValue || '';
-    
-    // Find the first position where texts differ
-    let diffStart = 0;
-    while (diffStart < oldText.length && diffStart < newText.length && 
-           oldText[diffStart] === newText[diffStart]) {
-        diffStart++;
+        const newText = this.editor.value;
+        const oldText = this.lastKnownText;
+        const operations = [];
+        
+        // Find the first difference
+        let diffStart = 0;
+        while (diffStart < oldText.length && diffStart < newText.length && 
+               oldText[diffStart] === newText[diffStart]) {
+            diffStart++;
+        }
+        
+        // Find the last difference from the end
+        let diffEndOld = oldText.length - 1;
+        let diffEndNew = newText.length - 1;
+        while (diffEndOld >= diffStart && diffEndNew >= diffStart && 
+               oldText[diffEndOld] === newText[diffEndNew]) {
+            diffEndOld--;
+            diffEndNew--;
+        }
+        
+        // Calculate delete operation if needed
+        if (diffEndOld >= diffStart) {
+            operations.push({
+                type: 'delete',
+                position: diffStart,
+                length: diffEndOld - diffStart + 1
+            });
+        }
+        
+        // Calculate insert operation if needed
+        if (diffEndNew >= diffStart) {
+            operations.push({
+                type: 'insert',
+                position: diffStart,
+                text: newText.substring(diffStart, diffEndNew + 1)
+            });
+        }
+        
+        return operations;
     }
-    
-    // Find the last position where texts differ from the end
-    let diffEndOld = oldText.length - 1;
-    let diffEndNew = newText.length - 1;
-    while (diffEndOld >= diffStart && diffEndNew >= diffStart && 
-           oldText[diffEndOld] === newText[diffEndNew]) {
-        diffEndOld--;
-        diffEndNew--;
-    }
-    
-    // Calculate operations
-    if (diffStart <= diffEndOld) {
-        // There are deletions
-        operations.push({
-            type: 'delete',
-            position: diffStart,
-            length: diffEndOld - diffStart + 1
-        });
-    }
-    
-    if (diffStart <= diffEndNew) {
-        // There are insertions
-        operations.push({
-            type: 'insert',
-            position: diffStart,
-            text: newText.substring(diffStart, diffEndNew + 1)
-        });
-    }
-    
-    e.target._prevValue = newText;
-    return operations;
-}
     
     applyRemoteOperations(operations) {
         this.ignoreNextChange = true;
         
+        // Save current cursor position
+        const cursorPos = this.editor.selectionStart;
         let newText = this.editor.value;
-        let offset = 0;
+        let cursorAdjustment = 0;
         
         operations.forEach(op => {
+            const pos = op.position;
+            
             if (op.type === 'insert') {
-                const pos = op.position + offset;
                 newText = newText.substring(0, pos) + op.text + newText.substring(pos);
-                offset += op.text.length;
+                
+                // Adjust cursor position if it's after the insertion point
+                if (pos < cursorPos) {
+                    cursorAdjustment += op.text.length;
+                }
             } else if (op.type === 'delete') {
-                const pos = op.position + offset;
                 newText = newText.substring(0, pos) + newText.substring(pos + op.length);
-                offset -= op.length;
+                
+                // Adjust cursor position if it's after the deletion point
+                if (pos < cursorPos) {
+                    cursorAdjustment -= Math.min(op.length, cursorPos - pos);
+                }
             }
         });
         
+        // Apply changes
         this.editor.value = newText;
-        this.editor._prevValue = newText;
+        this.lastKnownText = newText;
+        
+        // Restore and adjust cursor position
+        if (cursorAdjustment !== 0) {
+            const newCursorPos = cursorPos + cursorAdjustment;
+            this.editor.selectionStart = newCursorPos;
+            this.editor.selectionEnd = newCursorPos;
+            this.cursorPosition = newCursorPos;
+        }
+        
+        this.ignoreNextChange = false;
     }
     
     updateUserList(clients) {
@@ -169,7 +212,6 @@ class CollaborativeEditor {
     }
     
     initializeUI() {
-        // Network delay simulation
         this.networkDelayBtn.addEventListener('click', () => {
             this.networkDelay = !this.networkDelay;
             this.networkDelayBtn.textContent = 
@@ -182,7 +224,6 @@ class CollaborativeEditor {
             });
         });
         
-        // History controls
         document.getElementById('show-history').addEventListener('click', () => {
             this.socket.emit('request_history', { sessionId: this.sessionId });
         });
@@ -198,9 +239,7 @@ class CollaborativeEditor {
     
     replayHistory() {
         this.socket.emit('request_history', { sessionId: this.sessionId });
-        
-        // In a real implementation, we would replay the operations visually
-        alert('History replay would show here. In a full implementation, this would animate the changes.');
+        alert('History replay would animate changes in a full implementation');
     }
 }
 
