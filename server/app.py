@@ -23,7 +23,8 @@ def index():
 
 @app.route('/<session_id>')
 def join_session(session_id):
-    return render_template('editor.html', session_id=session_id)
+    username = request.args.get('username', 'Anonymous')
+    return render_template('editor.html', session_id=session_id, username=username)
 
 @socketio.on('connect')
 def handle_connect():
@@ -31,26 +32,36 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    session_manager.remove_client(request.sid)
-    print('Client disconnected:', request.sid)
+    client_id = request.sid
+    session_id = session_manager.clients.get(client_id)
+    if session_id:
+        session_manager.remove_client(client_id)
+        emit('user_left', {
+            'clientId': client_id,
+            'clients': session_manager.get_session_clients(session_id)
+        }, room=session_id)
+    print('Client disconnected:', client_id)
 
 @socketio.on('join')
 def handle_join(data):
     session_id = data['sessionId']
     username = data.get('username', 'Anonymous')
     
-    # Create or get document session
     document = session_manager.get_or_create_document(session_id)
-    
-    # Add client to session
     session_manager.add_client(request.sid, session_id, username)
     
-    # Send current document state to new client
+    # Send current state to new client
     emit('init', {
         'text': document.text,
         'revision': document.revision,
         'clients': session_manager.get_session_clients(session_id)
     }, room=request.sid)
+    
+    # Notify all clients about the new user
+    emit('user_joined', {
+        'clientId': request.sid,
+        'clients': session_manager.get_session_clients(session_id)
+    }, room=session_id)
 
 @socketio.on('edit')
 def handle_edit(data):

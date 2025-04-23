@@ -183,3 +183,23 @@ header h1 {
     background-color: #28a745;
     color: white;
 }
+
+.user-list li {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.user-list li:before {
+    content: "•";
+    color: #28a745;
+    margin-right: 8px;
+}
+
+.user-list li:first-child {
+    font-weight: bold;
+    background-color: #e2f0fd;
+}

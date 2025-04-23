@@ -13,7 +13,7 @@ class CollaborativeEditor {
         this.revision = 0;
         this.pendingOperations = [];
         this.ignoreNextChange = false;
-        this.username = `User${Math.floor(Math.random() * 1000)}`;
+        this.username = username || `User${Math.floor(Math.random() * 1000)}`;
         this.cursorPosition = 0;
         this.lastKnownText = '';
         
@@ -55,6 +55,14 @@ class CollaborativeEditor {
         
         this.socket.on('history', (history) => {
             this.displayHistory(history);
+        });
+
+        this.socket.on('user_joined', (data) => {
+            this.updateUserList(data.clients);
+        });
+    
+        this.socket.on('user_left', (data) => {
+            this.updateUserList(data.clients);
         });
     }
     
@@ -185,7 +193,7 @@ class CollaborativeEditor {
         this.userList.innerHTML = '';
         clients.forEach(client => {
             const li = document.createElement('li');
-            li.textContent = client.id === this.socket.id ? 
+            li.innerHTML = client.id === this.socket.id ? 
                 `You (${client.username})` : client.username;
             this.userList.appendChild(li);
         });

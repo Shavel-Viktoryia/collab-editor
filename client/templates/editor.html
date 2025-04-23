@@ -47,7 +47,8 @@
     
     <script>
         const sessionId = '{{ session_id }}';
-        document.addEventListener('DOMContentLoaded', () => initializeEditor(sessionId));
+        const username = '{{ username }}';
+        document.addEventListener('DOMContentLoaded', () => initializeEditor(sessionId, username));
     </script>
 </body>
 </html>
