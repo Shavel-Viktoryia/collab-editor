@@ -36,7 +36,6 @@
         document.getElementById('create-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const username = document.getElementById('username').value || 'Anonymous';
-            // Generate a random session ID
             const sessionId = Math.random().toString(36).substring(2, 10);
             window.location.href = `/${sessionId}?username=${encodeURIComponent(username)}`;
         });

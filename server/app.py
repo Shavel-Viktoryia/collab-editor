@@ -11,10 +11,7 @@ app = Flask(__name__,
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Manage active documents and sessions
 session_manager = SessionManager()
-
-# Simulate network delay (in seconds)
 NETWORK_DELAY = 0
 
 @app.route('/')
@@ -50,14 +47,12 @@ def handle_join(data):
     document = session_manager.get_or_create_document(session_id)
     session_manager.add_client(request.sid, session_id, username)
     
-    # Send current state to new client
     emit('init', {
         'text': document.text,
         'revision': document.revision,
         'clients': session_manager.get_session_clients(session_id)
     }, room=request.sid)
     
-    # Notify all clients about the new user
     emit('user_joined', {
         'clientId': request.sid,
         'clients': session_manager.get_session_clients(session_id)
@@ -65,7 +60,6 @@ def handle_join(data):
 
 @socketio.on('edit')
 def handle_edit(data):
-    # Simulate network delay if enabled
     if NETWORK_DELAY > 0:
         time.sleep(NETWORK_DELAY)
     
@@ -78,16 +72,25 @@ def handle_edit(data):
     if not document:
         return
     
-    # Apply operations with Operational Transform
     transformed_ops = document.apply_operations(client_id, revision, operations)
     
     if transformed_ops:
-        # Broadcast transformed operations to all other clients
         emit('update', {
             'clientId': client_id,
             'revision': document.revision,
             'operations': transformed_ops
-        }, room=session_id, include_self=False)
+        }, room=session_id)
+
+@socketio.on('cursor')
+def handle_cursor(data):
+    session_id = data['sessionId']
+    client_id = request.sid
+    emit('cursor_update', {
+        'clientId': client_id,
+        'position': data['position'],
+        'username': data['username'],
+        'selectionEnd': data.get('selectionEnd', data['position'])
+    }, room=session_id, include_self=False)
 
 @socketio.on('request_history')
 def handle_history_request(data):
@@ -95,6 +98,12 @@ def handle_history_request(data):
     document = session_manager.get_document(session_id)
     if document:
         emit('history', document.get_edit_history(), room=request.sid)
+
+@socketio.on('set_delay')
+def handle_set_delay(data):
+    global NETWORK_DELAY
+    NETWORK_DELAY = data['delay']
+    emit('delay_updated', {'delay': NETWORK_DELAY}, room=data['sessionId'])
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

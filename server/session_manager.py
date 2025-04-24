@@ -3,9 +3,9 @@ from document import Document
 
 class SessionManager:
     def __init__(self):
-        self.sessions: Dict[str, Document] = {}  # session_id -> Document
-        self.clients: Dict[str, str] = {}       # client_id -> session_id
-        self.client_info: Dict[str, dict] = {}  # client_id -> {username, etc.}
+        self.sessions: Dict[str, Document] = {}
+        self.clients: Dict[str, str] = {}
+        self.client_info: Dict[str, dict] = {}
     
     def get_or_create_document(self, session_id: str) -> Document:
         if session_id not in self.sessions:
@@ -18,8 +18,6 @@ class SessionManager:
     def add_client(self, client_id: str, session_id: str, username: str):
         self.clients[client_id] = session_id
         self.client_info[client_id] = {'username': username}
-        
-        # Initialize client's revision in document
         doc = self.get_or_create_document(session_id)
         doc.clients[client_id] = doc.revision
     
