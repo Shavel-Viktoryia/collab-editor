@@ -15,6 +15,8 @@ class CollaborativeEditor {
         this.lastKnownText = '';
         this.remoteCursors = new Map();
         this.typingTimeout = null;
+        this.historyData = [];
+        this.isReplaying = false;
 
         this.initializeSocket();
         this.initializeEditor();
@@ -37,23 +39,14 @@ class CollaborativeEditor {
             this.updateUserList(data.clients);
         });
 
-        this.socket.on('history', (history) => {
-            this.displayHistory(history);
-        });
-
         this.socket.on('update', (data) => {
+            if (this.isReplaying) return;
             this.revision = data.revision;
             this.applyRemoteOperations(data.operations);
         });
 
-        // В методе initializeSocket() добавьте:
-        this.socket.on('delay_updated', (data) => {
-            this.networkDelay = data.delay > 0;
-            this.networkDelayBtn.textContent = 
-                `Simulate Network Delay: ${this.networkDelay ? 'On' : 'Off'}`;
-        });
-
         this.socket.on('cursor_update', (data) => {
+            if (this.isReplaying) return;
             this.displayRemoteCursor(data);
         });
 
@@ -65,11 +58,21 @@ class CollaborativeEditor {
             this.updateUserList(data.clients);
             this.removeRemoteCursor(data.clientId);
         });
+
+        this.socket.on('history', (history) => {
+            this.displayHistory(history);
+        });
+
+        this.socket.on('delay_updated', (data) => {
+            this.networkDelay = data.delay > 0;
+            this.networkDelayBtn.textContent = 
+                `Simulate Network Delay: ${this.networkDelay ? 'On' : 'Off'}`;
+        });
     }
 
     initializeEditor() {
         this.editor.addEventListener('input', (e) => {
-            if (this.ignoreNextChange) {
+            if (this.ignoreNextChange || this.isReplaying) {
                 this.ignoreNextChange = false;
                 return;
             }
@@ -92,20 +95,6 @@ class CollaborativeEditor {
             this.revision += operations.length;
             this.lastKnownText = this.editor.value;
         });
-    }
-
-    displayHistory(history) {
-        this.historyList.innerHTML = history.map(op => `
-            <div class="history-item">
-                <div>
-                    <span class="time">${new Date(op.timestamp).toLocaleString()}</span>
-                    <span class="type ${op.type}">${op.type}</span>
-                    ${op.type === 'insert' ? 
-                        `Inserted "${op.text}" at position ${op.position}` : 
-                        `Deleted ${op.length} chars at position ${op.position}`}
-                </div>
-            </div>
-        `).join('');
     }
 
     calculateOperations(e) {
@@ -197,6 +186,7 @@ class CollaborativeEditor {
         };
 
         const updateCursor = throttle(() => {
+            if (this.isReplaying) return;
             const cursorPos = this.editor.selectionStart;
             const selectionEnd = this.editor.selectionEnd;
             this.socket.emit('cursor', {
@@ -213,7 +203,7 @@ class CollaborativeEditor {
     }
 
     displayRemoteCursor(data) {
-        if (data.clientId === this.socket.id) return;
+        if (data.clientId === this.socket.id || this.isReplaying) return;
 
         const cursorId = `cursor-${data.clientId}`;
         let cursor = this.remoteCursors.get(cursorId);
@@ -309,7 +299,7 @@ class CollaborativeEditor {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark-theme');
         });
-    
+
         // Network delay button
         this.networkDelayBtn = document.getElementById('network-delay');
         this.networkDelay = false;
@@ -319,31 +309,31 @@ class CollaborativeEditor {
             this.networkDelayBtn.textContent = 
                 `Simulate Network Delay: ${this.networkDelay ? 'On' : 'Off'}`;
             
-            // Send delay setting to server
             this.socket.emit('set_delay', {
                 delay: this.networkDelay ? 2 : 0,
                 sessionId: this.sessionId
             });
         });
-    
+
         // Show history button
         document.getElementById('show-history').addEventListener('click', () => {
             this.socket.emit('request_history', { sessionId: this.sessionId });
             this.historyModal.classList.remove('hidden');
         });
-    
+
         // Close history button
         document.getElementById('close-history').addEventListener('click', () => {
             this.historyModal.classList.add('hidden');
         });
-    
+
         // Replay history button
         document.getElementById('replay-history').addEventListener('click', () => {
             this.replayHistory();
         });
-    
+
         // Typing indicator
         this.editor.addEventListener('input', () => {
+            if (this.isReplaying) return;
             this.editor.parentNode.classList.add('typing');
             clearTimeout(this.typingTimeout);
             this.typingTimeout = setTimeout(() => {
@@ -351,11 +341,127 @@ class CollaborativeEditor {
             }, 500);
         });
     }
-    
+
+    displayHistory(history) {
+        this.historyData = history;
+        this.historyList.innerHTML = history.map((op, index) => `
+            <div class="history-item" data-index="${index}">
+                <div class="op-info">
+                    <span class="time">${new Date(op.timestamp).toLocaleString()}</span>
+                    <span class="type ${op.type}">${op.type.toUpperCase()}</span>
+                </div>
+                <div class="op-details">
+                    ${op.type === 'insert' ? 
+                        `Inserted: <strong>"${op.text}"</strong> at position ${op.position}` : 
+                        `Deleted: <strong>${op.length} chars</strong> from position ${op.position}`}
+                </div>
+            </div>
+        `).join('');
+    }
+
     replayHistory() {
-        // Simple replay implementation - in a real app this would animate changes
-        alert('History replay would show changes animation in a full implementation');
-        this.historyModal.classList.add('hidden');
+        if (this.historyData.length === 0) return;
+        
+        this.isReplaying = true;
+        const originalText = this.editor.value;
+        const replayBtn = document.getElementById('replay-history');
+        const closeBtn = document.getElementById('close-history');
+        
+        // Disable controls during replay
+        replayBtn.disabled = true;
+        closeBtn.disabled = true;
+        replayBtn.textContent = 'Replaying...';
+        this.editor.disabled = true;
+        
+        // Reset editor content
+        this.editor.value = '';
+        this.lastKnownText = '';
+        
+        // Replay each operation with delay
+        let delay = 0;
+        this.historyData.forEach((op, index) => {
+            setTimeout(() => {
+                this.highlightHistoryItem(index);
+                this.applyReplayOperation(op);
+                
+                // Re-enable controls after last operation
+                if (index === this.historyData.length - 1) {
+                    setTimeout(() => {
+                        replayBtn.disabled = false;
+                        closeBtn.disabled = false;
+                        replayBtn.textContent = 'Replay';
+                        this.editor.disabled = false;
+                        this.isReplaying = false;
+                    }, 500);
+                }
+            }, delay);
+            
+            delay += 1000; // 1 second between operations
+        });
+    }
+
+    highlightHistoryItem(index) {
+        // Remove highlight from all items
+        document.querySelectorAll('.history-item').forEach(item => {
+            item.style.backgroundColor = '';
+        });
+        
+        // Highlight current item
+        const item = document.querySelector(`.history-item[data-index="${index}"]`);
+        if (item) {
+            item.style.backgroundColor = 'rgba(74, 144, 226, 0.1)';
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    applyReplayOperation(op) {
+        const editor = this.editor;
+        let newText = editor.value;
+        
+        if (op.type === 'insert') {
+            // Insert operation with animation
+            newText = newText.slice(0, op.position) + op.text + newText.slice(op.position);
+            editor.value = newText;
+            
+            // Highlight inserted text
+            setTimeout(() => {
+                editor.focus();
+                editor.setSelectionRange(op.position, op.position + op.text.length);
+                
+                // Create temporary selection with animation
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.setStart(editor.firstChild, op.position);
+                range.setEnd(editor.firstChild, op.position + op.text.length);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // Apply animation
+                document.execCommand('hiliteColor', false, '#e8f5e9');
+                setTimeout(() => {
+                    document.execCommand('hiliteColor', false, 'transparent');
+                }, 1000);
+                
+            }, 10);
+            
+        } else if (op.type === 'delete') {
+            // Delete operation with animation
+            const deletedText = newText.slice(op.position, op.position + op.length);
+            
+            // Highlight text to be deleted
+            editor.focus();
+            editor.setSelectionRange(op.position, op.position + op.length);
+            
+            // Apply animation before deletion
+            document.execCommand('hiliteColor', false, '#ffebee');
+            
+            setTimeout(() => {
+                newText = newText.slice(0, op.position) + newText.slice(op.position + op.length);
+                editor.value = newText;
+            }, 800);
+        }
+        
+        this.lastKnownText = newText;
     }
 }
 

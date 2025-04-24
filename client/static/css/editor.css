@@ -241,31 +241,66 @@ body.dark-theme .user-list .current-user {
 }
 
 .history-item {
-    padding: 0.75rem;
+    padding: 1rem;
     margin: 0.5rem 0;
     background: var(--background-color);
     border-radius: 6px;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
 }
 
-.history-item .time {
+.history-item:hover {
+    background-color: rgba(74, 144, 226, 0.05);
+}
+
+.op-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.op-details {
+    font-size: 0.95rem;
+}
+
+.time {
     color: var(--secondary-color);
-    font-size: 0.8rem;
 }
 
-.history-item .type {
+.type {
     display: inline-block;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    font-weight: bold;
     font-size: 0.8rem;
-    margin-right: 0.5rem;
 }
 
-.history-item .type.insert {
-    background: #e8f5e9;
+.type.insert {
+    background-color: #e8f5e9;
     color: #2e7d32;
 }
 
-.history-item .type.delete {
-    background: #ffebee;
+.type.delete {
+    background-color: #ffebee;
     color: #c62828;
 }
+
+.replay-btn {
+    background-color: #4CAF50;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.replay-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.modal-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    gap: 1rem;
+}
+
