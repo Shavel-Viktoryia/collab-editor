@@ -1,54 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Collaborative Editor - Session {{ session_id }}</title>
-    <link rel="stylesheet" href="/static/css/editor.css">
+    <link rel="stylesheet" href="/static/css/editor.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="/static/js/editor.js"></script>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>Collaborative Editor</h1>
-            <div class="session-info">
-                <span>Session ID: <strong id="session-id">{{ session_id }}</strong></span>
-                <span>Users online: <strong id="user-count">1</strong></span>
-            </div>
-            <div class="controls">
-                <button id="network-delay">Simulate Network Delay: Off</button>
-                <button id="show-history">Show History</button>
-            </div>
-        </header>
-        
-        <div class="editor-container">
-            <div class="user-list">
-                <h3>Connected Users</h3>
-                <ul id="user-list">
-                    <li>You (Anonymous)</li>
-                </ul>
-            </div>
-            
-            <div class="text-editor">
-                <textarea id="editor" spellcheck="false"></textarea>
-            </div>
+      <header>
+        <h1>Collaborative Editor</h1>
+        <div class="session-info">
+          <span
+            >Session ID: <strong id="session-id">{{ session_id }}</strong></span
+          >
+          <span>Users online: <strong id="user-count">1</strong></span>
         </div>
-        
-        <div class="history-modal hidden" id="history-modal">
-            <div class="modal-content">
-                <h2>Edit History</h2>
-                <div class="history-list" id="history-list"></div>
-                <button class="close-btn" id="close-history">Close</button>
-                <button class="replay-btn" id="replay-history">Replay</button>
-            </div>
+        <div class="controls">
+          <button id="network-delay">Simulate Network Delay: Off</button>
+          <button id="show-history">Show History</button>
         </div>
+      </header>
+
+      <div class="editor-container">
+        <div class="user-list">
+          <h3>Connected Users</h3>
+          <ul id="user-list">
+            <li>You (Anonymous)</li>
+          </ul>
+        </div>
+
+        <div class="text-editor">
+          <textarea id="editor" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <div class="history-modal hidden" id="history-modal">
+        <div class="modal-content">
+          <h2>Edit History</h2>
+          <div class="history-list" id="history-list"></div>
+          <button class="close-btn" id="close-history">Close</button>
+          <button class="replay-btn" id="replay-history">Replay</button>
+        </div>
+      </div>
     </div>
-    
+
     <script>
-        const sessionId = '{{ session_id }}';
-        const username = '{{ username }}';
-        document.addEventListener('DOMContentLoaded', () => initializeEditor(sessionId, username));
+      const sessionId = "{{ session_id }}";
+      const username = "{{ username }}";
+      document.addEventListener("DOMContentLoaded", () =>
+        initializeEditor(sessionId, username)
+      );
     </script>
-</body>
+  </body>
 </html>
