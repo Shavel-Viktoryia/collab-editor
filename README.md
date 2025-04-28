@@ -21,6 +21,6 @@ Realtime Communication: WebSockets via Socket.IO
 Frontend: Vanilla JS + Socket.IO client
 
 
-🚀 **Dependencies installation **
+🚀 Dependencies installation 
 
 pip install flask flask-socketio
