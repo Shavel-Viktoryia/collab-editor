@@ -1,10 +1,10 @@
-📚 Collaborative Text Editor
+📚 **Collaborative Text Editor**
 
 Real-time collaborative text editor with multiple clients and live sync using WebSockets. 
 
 
 
-✨ Features
+✨ **Features**
 
 Real-Time Collaboration — instantly sync edits between users.
 Session Management — unique collaboration sessions via URL.
@@ -14,13 +14,13 @@ Network Delay Simulation — introduce artificial lag to test synchronization.
 Edit History — request and replay full edit history.
 
 
-🛠 Tech Stack
+🛠 **Tech Stack**
 
 Backend: Flask, Flask-SocketIO, Python
 Realtime Communication: WebSockets via Socket.IO
 Frontend: Vanilla JS + Socket.IO client
 
 
-🚀 Dependencies installation 
+🚀 **Dependencies installation **
 
 pip install flask flask-socketio
