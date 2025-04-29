@@ -431,7 +431,7 @@ class CollaborativeEditor {
                     ${
                       op.type === "insert"
                         ? `User <strong>${op.username}</strong> Inserted: <strong>"${op.text}"</strong> at position ${op.position}`
-                        : `User <strong>${op.username}</strong> Deleted: <strong>${op.length} chars</strong> from position ${op.position}`
+                        : `User <strong>${op.username}</strong> Deleted: <strong>"${op.deleted_text}"</strong> from position ${op.position}`
                     }
                 </div>
             </div>
