@@ -97,11 +97,14 @@ def handle_edit(data):
         time.sleep(NETWORK_DELAY)
     session_id = data['sessionId']
     client_id = request.sid
+    username = session_manager.client_info.get(client_id, {}).get('username', 'Anonymous')
     revision = data['revision']
     operations = data['operations']
     document = session_manager.get_document(session_id)
     if not document:
         return
+    for op in operations:
+        op['username'] = username
     transformed_ops = document.apply_operations(client_id, revision, operations)
     if transformed_ops:
         emit('update', {

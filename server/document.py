@@ -3,7 +3,7 @@ import uuid
 from typing import List, Dict, Any
 
 class TextOperation:
-    def __init__(self, type: str, position: int, text: str = '', length: int = 0, deleted_text: str = ''):
+    def __init__(self, type: str, position: int, text: str = '', length: int = 0, deleted_text: str = '', username: str = ''):
         # Unique identifier for this operation
         self.id = str(uuid.uuid4())
         # Operation type: 'insert' or 'delete'
@@ -18,6 +18,8 @@ class TextOperation:
         self.deleted_text = deleted_text
         # Timestamp in milliseconds
         self.timestamp = time.time() * 1000
+        # Username
+        self.username = username
     
     def to_dict(self) -> Dict[str, Any]:
         #  Serialize this operation for JSON transport.
@@ -28,7 +30,8 @@ class TextOperation:
             'text': self.text,
             'length': self.length,
             'deleted_text': self.deleted_text,
-            'timestamp': self.timestamp
+            'timestamp': self.timestamp,
+            'username': self.username
         }
 
 class Document:
