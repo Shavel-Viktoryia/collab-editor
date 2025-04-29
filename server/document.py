@@ -10,7 +10,7 @@ class TextOperation:
         self.text = text
         self.length = length
         self.deleted_text = deleted_text  
-        self.timestamp = time.time()
+        self.timestamp = time.time() * 1000
     
     def to_dict(self) -> Dict[str, Any]:
         return {
